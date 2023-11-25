@@ -1,0 +1,27 @@
+version: '3.6'
+services:
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: vault
+    restart: on-failure:10
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_ADDR: 'https://0.0.0.0:8200'
+      VAULT_API_ADDR: "http://0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      retries: 5
+    entrypoint: vault server -dev -dev-listen-address="0.0.0.0:8200" -dev-root-token-id="root"
+
+  vault-init:
+    container_name: vault-init
+    image: hashicorp/vault:1.15
+    volumes:
+      - ./vault-dev/policies:/policies:ro
+      - ./vault-dev/init-dev.sh:/init-dev.sh:ro
+    depends_on:
+      - vault
+    restart: "no"
+    command: sh -c "/init-dev.sh"
