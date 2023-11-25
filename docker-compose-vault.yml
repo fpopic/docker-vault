@@ -1,0 +1,43 @@
+version: '3.7'
+services:
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: vault
+    hostname: vault
+    ports:
+      - "8200:8200"
+    environment:
+      - VAULT_ADDR=http://0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - ./vault/policies:/policies:ro
+      # vault by default expects /vault/config/config.hcl
+      - ./vault/config/my-config.hcl:/vault/config/config.hcl:ro
+      # mount named volume (to persist root key)
+      - vault-data:/vault/file/
+    command: "server -log-level debug"
+    restart: always
+
+  vault-init:
+    image: hashicorp/vault:1.15
+    container_name: vault-init
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - MY_VAULT_TOKEN=${MY_VAULT_TOKEN:-test}
+    volumes:
+      - ./vault/init.sh:/init.sh
+      # mount named volume (to read root key)
+      - vault-data:/vault/file/
+      # not provided with repository (will fall back on default value in env var)
+      # keys will be written to named volume to persisted them across restarts
+      - ./vault/vault-root-token:/vault/file/vault-root-token
+    depends_on:
+      - vault
+    command: "./init.sh"
+    restart: on-failure
+
+
+volumes:
+  # named volume
+  vault-data:
